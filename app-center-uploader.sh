@@ -19,7 +19,7 @@ function howTo() {
   echo
   echo "Supported options:"
   echo -e "\t'-f, --file (required)' - path to apk build file."
-  echo -e "\t'-c, --credentials (required)' - path to credentials file with AppCenter token and other private data. Ask Android Platform team about it."
+  echo -e "\t'-c, --credentials (required)' - path to credentials file with AppCenter token and other private data."
   echo
   echo -e "For example:"
   echo -e "\t./$(basename ${BASH_SOURCE}) -f ./app/build/outputs/apk/release/app-release.apk -c ./credentials.sh"
@@ -109,8 +109,8 @@ AUTH="X-API-Token: $API_TOKEN"
 ACCEPT_JSON="Accept: application/json"
 CONTENT_TYPE="application/vnd.android.package-archive"
 
-# Body - Step 1/7
-echo "Creating release (1/7)"
+# Body - Step 1/8
+echo "Creating release (1/8)"
 request_url="$API_URL/uploads/releases"
 upload_json=$(curl -s -X POST -H "Content-Type: application/json" -H "$ACCEPT_JSON" -H "$AUTH" "$request_url")
 echo "API Response: $upload_json"
@@ -127,8 +127,8 @@ url_encoded_token=$(echo $upload_json | jq -r '.url_encoded_token')
 file_name=$(basename $APK_BUILD_FILE)
 file_size=$(eval wc -c $APK_BUILD_FILE | awk '{print $1}')
 
-# Step 2/7
-echo "Creating metadata (2/7)"
+# Step 2/8
+echo "Creating metadata (2/8)"
 metadata_url="$UPLOAD_DOMAIN/set_metadata/$package_asset_id?file_name=$file_name&file_size=$file_size&token=$url_encoded_token&content_type=$CONTENT_TYPE"
 
 meta_response=$(curl -s -d POST -H "Content-Type: application/json" -H "$ACCEPT_JSON" -H "$AUTH" "$metadata_url")
@@ -140,8 +140,8 @@ echo $chunk_size
 mkdir -p $SPLIT_DIR
 eval split -b $chunk_size $APK_BUILD_FILE $SPLIT_DIR/split
 
-# Step 3/7
-echo "Uploading chunked binary (3/7)"
+# Step 3/8
+echo "Uploading chunked binary (3/8)"
 binary_upload_url="$UPLOAD_DOMAIN/upload_chunk/$package_asset_id?token=$url_encoded_token"
 
 block_number=0
@@ -155,13 +155,14 @@ do
     printf "\n"
 done
 
-# Step 4/7
-echo "Finalising upload (4/7)"
+# Step 4/8
+echo "Finalising upload (4/8)"
 finish_url="$UPLOAD_DOMAIN/finished/$package_asset_id?token=$url_encoded_token"
 curl -d POST -H "Content-Type: application/json" -H "$ACCEPT_JSON" -H "$AUTH" "$finish_url"
+echo
 
-# Step 5/7
-echo "Commit release (5/7)"
+# Step 5/8
+echo "Commit release (5/8)"
 commit_url="$API_URL/uploads/releases/$releases_id"
 curl -H "Content-Type: application/json" -H "$ACCEPT_JSON" -H "$AUTH" \
   --data '{"upload_status": "uploadFinished","id": "$releases_id"}' \
@@ -169,8 +170,8 @@ curl -H "Content-Type: application/json" -H "$ACCEPT_JSON" -H "$AUTH" \
   $commit_url
 echo
 
-# Step 6/7
-echo "Polling for release id (6/7)"
+# Step 6/8
+echo "Polling for release id (6/8)"
 release_id=null
 counter=0
 max_poll_attempts=300
@@ -191,8 +192,8 @@ then
     exit 1
 fi
 
-# Step 7/7
-echo "Applying destination to release (7/7)"
+# Step 7/8
+echo "Applying destination to release (7/8)"
 
 if [[ ! -z ${DISTRIBUTION_GROUPS} ]]; then
   IFS=',' read -ra TESTER_GROUPS <<< "${DISTRIBUTION_GROUPS}"
@@ -209,8 +210,10 @@ curl -H "Content-Type: application/json" -H "$ACCEPT_JSON" -H "$AUTH" \
   --data '{"destinations": ['"${DISTRIBUTION_GROUPS_DATA}"'] }' \
   -X PATCH \
   $distribute_url
+echo
 
-# Clean caches:
+# Step 8/8
+echo "Clean cache (8/8)"
 rm -rv "${SPLIT_DIR}"
 
 echo
